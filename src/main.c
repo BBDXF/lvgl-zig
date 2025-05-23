@@ -1,57 +1,62 @@
-#include <unistd.h>
-#include <stdlib.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-#include "lvgl.h"
 #include "lv_demo_widgets.h"
+#include "lvgl.h"
 
-/**
- * Initialize the SDL display driver
- *
- * @return the LVGL display
- */
-static lv_display_t *init_sdl(void)
+#include "src/drivers/sdl/lv_sdl_mouse.h"
+#include "src/drivers/sdl/lv_sdl_mousewheel.h"
+#include "src/drivers/sdl/lv_sdl_keyboard.h"
+
+static lv_display_t *lvDisplay;
+static lv_indev_t *lvMouse;
+static lv_indev_t *lvMouseWheel;
+static lv_indev_t *lvKeyboard;
+
+#if LV_USE_LOG != 0
+static void lv_log_print_g_cb(lv_log_level_t level, const char * buf)
 {
-    lv_display_t *disp;
-
-    disp = lv_sdl_window_create(800,600);
-
-    if (disp == NULL) {
-        return NULL;
-    }
-
-    return disp;
+    LV_UNUSED(level);
+    LV_UNUSED(buf);
 }
+#endif
 
-/**
- * The run loop of the SDL driver
- */
-static void run_loop_sdl(void)
-{
-    uint32_t idle_time;
-
-    /* Handle LVGL tasks */
-    while (true) {
-        /* Returns the time to the next timer execution */
-        idle_time = lv_timer_handler();
-        usleep(idle_time * 1000);
-    }
-}
-
-int main(int argc, char **argv)
-{
-    /* Initialize LVGL. */
+int main(int argc, char **argv) {
+    /* initialize lvgl */
     lv_init();
 
-    /* Initialize the configured backend */
-    init_sdl();
+    // Workaround for sdl2 `-m32` crash
+    // https://bugs.launchpad.net/ubuntu/+source/libsdl2/+bug/1775067/comments/7
+    #ifndef WIN32
+        setenv("DBUS_FATAL_WARNINGS", "0", 1);
+    #endif
 
-    /*Create a Demo*/
+    /* Register the log print callback */
+    #if LV_USE_LOG != 0
+    lv_log_register_print_cb(lv_log_print_g_cb);
+    #endif
+
+    /* Add a display
+    * Use the 'monitor' driver which creates window on PC's monitor to simulate a display*/
+
+    lvDisplay = lv_sdl_window_create(800, 600);
+    lvMouse = lv_sdl_mouse_create();
+    lvMouseWheel = lv_sdl_mousewheel_create();
+    lvKeyboard = lv_sdl_keyboard_create();
+
+    /* create Widgets on the screen */
     lv_demo_widgets();
-    lv_demo_widgets_start_slideshow();
 
-    
-    run_loop_sdl();
+
+    Uint32 lastTick = SDL_GetTicks();
+    while(1) {
+        SDL_Delay(5);
+        Uint32 current = SDL_GetTicks();
+        lv_tick_inc(current - lastTick); // Update the tick timer. Tick is new for LVGL 9
+        lastTick = current;
+        lv_timer_handler(); // Update the UI-
+    }
 
     return 0;
 }

@@ -57,18 +57,12 @@ pub fn build(b: *std.Build) void {
     const cwd = b.path(".").getPath(b);
     for (c_files.items) |c_file| {
         if (std.fs.path.relative(b.allocator, cwd, c_file)) |c_cwd| {
-            std.log.warn("=> add {s}, {s}", .{ c_file, c_cwd });
+            // std.log.warn("=> add {s}, {s}", .{ c_file, c_cwd });
             lvgl_lib_mod.addCSourceFile(.{
                 .file = b.path(c_cwd),
             });
         } else |_| {}
     }
-    lvgl_lib_mod.addCSourceFiles(.{
-        .files = &.{
-            "src/main.c",
-            "src/lv_demo_widgets.c",
-        },
-    });
     // add header
     lvgl_lib_mod.addIncludePath(b.path("lvgl"));
     lvgl_lib_mod.addIncludePath(b.path("src"));
@@ -80,20 +74,31 @@ pub fn build(b: *std.Build) void {
         .version = .{ .major = 1, .minor = 0, .patch = 0 },
     });
     lvgl_lib.linkLibC();
-    lvgl_lib.linkSystemLibrary("SDL2");
 
-    // // test
-    // const demo_exe = b.addExecutable(.{
-    //     .name = "demo",
-    //     .target = target,
-    //     .optimize = optimize,
-    //     .root_source_file = b.path("tests/demo.zig"),
-    // });
-    // demo_exe.addIncludePath(b.path("src"));
-    // demo_exe.addIncludePath(b.path("quickjs"));
-    // demo_exe.linkLibrary(lvgl_lib);
+    // test
+    const demo_exe = b.addExecutable(.{
+        .name = "demo",
+        .target = target,
+        .optimize = optimize,
+    });
+    lvgl_lib_mod.addCSourceFiles(.{
+        .files = &.{
+            "src/main.c",
+            "src/lv_demo_widgets.c",
+            "src/img_clothes.c",
+            "src/img_demo_widgets_avatar.c",
+            "src/img_demo_widgets_needle.c",
+            "src/img_lvgl_logo.c",
+        },
+    });
+    // add header
+    demo_exe.addIncludePath(b.path("lvgl"));
+    demo_exe.addIncludePath(b.path("src"));
+    demo_exe.addIncludePath(b.path("."));
+    demo_exe.linkSystemLibrary("SDL2");
+    demo_exe.linkLibrary(lvgl_lib);
 
     // // install
-    // b.installArtifact(demo_exe);
+    b.installArtifact(demo_exe);
     b.installArtifact(lvgl_lib);
 }
